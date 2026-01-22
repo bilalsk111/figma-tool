@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VectorFlow (DOM)</title>
+  <link href="https://cdn.jsdelivr.net/npm/remixicon@4.8.0/fonts/remixicon.css" rel="stylesheet" />
+</head>
+
+<body class="bg-[#0f0f11] text-zinc-200 h-screen overflow-hidden font-sans">
+
+  <header
+    class="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-[#1c1c1f] px-3 py-2 rounded-xl shadow-lg flex items-center gap-2 border border-zinc-700">
+    <button class="toolbar-btn active" data-tool="select" title="Select"><i class="ri-cursor-line"></i></button>
+    <button class="toolbar-btn" data-tool="rectangle" title="Rectangle"><i class="ri-rectangle-line"></i></button>
+    <button class="toolbar-btn" data-tool="circle" title="Circle"><i class="ri-circle-line"></i></button>
+    <button class="toolbar-btn" data-tool="triangle" title="Triangle"><i class="ri-triangle-line"></i></button>
+    <button class="toolbar-btn" data-tool="text" title="Text"><i class="ri-t-box-line"></i></button>
+    <button class="toolbar-btn" data-tool="pencil" title="Pencil"><i class="ri-pencil-line"></i></button>
+    <button class="toolbar-btn" data-tool="image" title="Image"><i class="ri-image-add-line"></i></button>
+
+    <div class="w-px h-5 bg-zinc-600 mx-1"></div>
+
+    <button class="toolbar-btn" id="undoBtn" title="Undo"><i class="ri-arrow-go-back-line"></i></button>
+    <button class="toolbar-btn" id="redoBtn" title="Redo"><i class="ri-arrow-go-forward-line"></i></button>
+
+    <div class="w-px h-5 bg-zinc-600 mx-1"></div>
+
+    <button id="exportBtn" class="px-3 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-700 text-white">
+      Export
+    </button>
+  </header>
+
+  <div class="flex h-full pt-0">
+
+    <aside class="w-64 bg-[#18181b] border-r border-zinc-800 flex flex-col">
+      <h1 class="px-4 py-3 text-3xl font-semibold tracking-wide border-b border-zinc-800">VectorFlow</h1>
+      <h2 class="px-4 py-3 text-xl font-semibold tracking-wide border-b border-zinc-800">Layers</h2>
+      <ul id="layersList" class="flex-1 overflow-y-auto text-md px-3 p-2 border-b text-slate-600"></ul>
+    </aside>
+
+    <main class="flex-1 relative flex items-center justify-center bg-[#0f0f11]">
+      <div class="absolute inset-0 opacity-[0.08]"
+        style="background-image: radial-gradient(#ffffff 1px, transparent 1px); background-size: 18px 18px;">
+      </div>
+
+      <div id="canvas" class="relative z-10 w-full h-screen bg-zinc-800 shadow-2xl overflow-hidden"></div>
+    </main>
+
+    <aside class="w-72 h-screen bg-[#18181b] border-l border-zinc-800 px-4 py-5 flex flex-col gap-6 text-[11px]">
+
+      <h3 class="uppercase tracking-widest text-zinc-400">Properties</h3>
+
+      <div class="flex flex-col gap-3">
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="prop-label">W</label>
+            <input id="propW" class="prop-input" />
+          </div>
+          <div>
+            <label class="prop-label">H</label>
+            <input id="propH" class="prop-input" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="prop-label">X</label>
+            <input id="propX" class="prop-input" />
+          </div>
+          <div>
+            <label class="prop-label">Y</label>
+            <input id="propY" class="prop-input" />
+          </div>
+        </div>
+      </div>
+
+      <div class="h-px bg-zinc-800"></div>
+
+      <div class="flex flex-col gap-4">
+        <h4 class="text-zinc-300 text-xs font-medium">Appearance</h4>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div class="flex flex-col gap-1.5">
+            <label class="prop-label">Opacity</label>
+            <input id="propOpacity" class="prop-input" value="100" />
+          </div>
+
+          <div class="flex flex-col gap-1.5">
+            <label class="prop-label">Corner radius</label>
+            <input id="propRadius" class="prop-input" value="0" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="prop-label">Background</label>
+          <div class="flex items-center gap-2 bg-[#0f0f11] border border-zinc-700 rounded-md px-2 h-9 relative">
+            <input type="color" id="bgColorPicker" class="absolute inset-0 opacity-0 cursor-pointer" />
+            <div id="bgPreview" class="w-4 h-4 rounded bg-[#222222] border border-zinc-600"></div>
+            <input id="bgValue" class="bg-transparent outline-none flex-1 text-zinc-200" value="#222222" readonly />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="prop-label">Fill</label>
+          <div class="flex items-center gap-2 bg-[#0f0f11] border border-zinc-700 rounded-md px-2 h-9 relative">
+            <input type="color" id="fillColorPicker" class="absolute inset-0 opacity-0 cursor-pointer" />
+            <div id="fillPreview" class="w-4 h-4 rounded bg-[#D9D9D9] border border-zinc-600"></div>
+            <input id="fillValue" class="bg-transparent outline-none flex-1 text-zinc-200" value="#D9D9D9" readonly />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="prop-label">Font Size</label>
+          <input id="propFontSize" class="prop-input" value="16" />
+        </div>
+
+        <div class="flex flex-col gap-1.5">
+          <label class="prop-label">Text</label>
+          <input id="propText" class="prop-input" value="" placeholder="Only for text" />
+        </div>
+      </div>
+
+      <button id="deleteBtn"
+        class="mt-auto h-9 rounded-md bg-red-500/10 border border-red-500 text-red-400 hover:bg-red-500 hover:text-white transition">
+        Delete
+      </button>
+
+    </aside>
+
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
