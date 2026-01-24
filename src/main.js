@@ -22,7 +22,6 @@ fileInput.addEventListener("change", () => {
   const file = fileInput.files[0]
   if (!file) return
 
-  // ✅ base64 so reload works
   const reader = new FileReader()
   reader.onload = () => setPendingImage(reader.result)
   reader.readAsDataURL(file)
@@ -211,6 +210,17 @@ function applyProps() {
 /* ===================== LAYERS ===================== */
 const layersList = document.getElementById("layersList")
 
+const layerIcons = {
+  rect: "ri-checkbox-blank-line",
+  circle: "ri-circle-line",
+  ellipse: "ri-ellipse-line",
+  line: "ri-subtract-line",
+  pencil: "ri-pencil-line",
+  path: "ri-pencil-line",
+  text: "ri-text",
+  image: "ri-image-line",
+}
+
 function syncLayers() {
   const elems = [...stage.querySelectorAll(".vf-elem")]
   layersList.innerHTML = ""
@@ -220,8 +230,13 @@ function syncLayers() {
     li.className = "layer-item"
     if (el === editorState.selectedElem) li.classList.add("active")
 
-    let label = `${el.dataset.type} ${idx + 1}`
-    li.textContent = label
+    const type = el.dataset.type || "shape"
+    const iconClass = layerIcons[type] || "ri-shapes-line"
+
+    li.innerHTML = `
+      <i class="${iconClass} layer-icon"></i>
+      <span class="layer-label">${type}</span>
+    `
 
     li.onclick = () => {
       selectElem(el, stage, canvas)
@@ -232,6 +247,7 @@ function syncLayers() {
     layersList.appendChild(li)
   })
 }
+
 
 canvas.addEventListener("mousedown", () => {
   setTimeout(() => {
