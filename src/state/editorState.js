@@ -1,7 +1,7 @@
 export const editorState = {
   currentTool: "select",
 
-  backgroundColor: "#111",
+  backgroundColor: "#222222",
   fillColor: "#D9D9D9",
 
   stage: null,

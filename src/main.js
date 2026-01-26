@@ -8,6 +8,7 @@ import { setPendingImage } from "./tools/imageTool"
 import { saveToStorage, loadFromStorage } from "./utils/storage"
 import { exportStageAsSVG } from "./utils/exportSVG"
 
+/* ===================== INIT ===================== */
 initCanvas()
 saveState()
 
@@ -43,41 +44,38 @@ document.querySelectorAll(".toolbar-btn[data-tool]").forEach(btn => {
 })
 
 /* ===================== EXPORT ===================== */
-document.getElementById("exportBtn").addEventListener("click", () => {
-  exportStageAsSVG(canvas)
+document.getElementById("exportBtn")?.addEventListener("click", () => {
+  exportStageAsSVG(canvas, stage, editorState.backgroundColor)
 })
 
-/* ===================== UNDO REDO ===================== */
-document.getElementById("undoBtn").addEventListener("click", () => {
+/* ===================== UNDO / REDO ===================== */
+function afterHistory() {
+  clearSelection(stage)
+  syncLayers()
+  syncProperties()
+  autoSave()
+}
+
+document.getElementById("undoBtn")?.addEventListener("click", () => {
   undo()
-  clearSelection(stage)
-  syncLayers()
-  syncProperties()
-  autoSave()
+  afterHistory()
 })
 
-document.getElementById("redoBtn").addEventListener("click", () => {
+document.getElementById("redoBtn")?.addEventListener("click", () => {
   redo()
-  clearSelection(stage)
-  syncLayers()
-  syncProperties()
-  autoSave()
+  afterHistory()
 })
 
 window.addEventListener("keydown", e => {
   if (e.ctrlKey && e.key === "z") {
+    e.preventDefault()
     undo()
-    clearSelection(stage)
-    syncLayers()
-    syncProperties()
-    autoSave()
+    afterHistory()
   }
   if (e.ctrlKey && e.key === "y") {
+    e.preventDefault()
     redo()
-    clearSelection(stage)
-    syncLayers()
-    syncProperties()
-    autoSave()
+    afterHistory()
   }
   if (e.key === "Delete") deleteSelected()
 })
@@ -87,12 +85,12 @@ function autoSave() {
   saveToStorage(stage, editorState)
 }
 
-/* ===================== PROPERTIES + COLORS ===================== */
+/* ===================== BACKGROUND ===================== */
 const bgPicker = document.getElementById("bgColorPicker")
 const bgPreview = document.getElementById("bgPreview")
 const bgValue = document.getElementById("bgValue")
 
-bgPicker.addEventListener("input", e => {
+bgPicker?.addEventListener("input", e => {
   editorState.backgroundColor = e.target.value
   canvas.style.background = editorState.backgroundColor
   bgPreview.style.background = editorState.backgroundColor
@@ -100,11 +98,12 @@ bgPicker.addEventListener("input", e => {
   autoSave()
 })
 
+/* ===================== FILL COLOR ===================== */
 const fillPicker = document.getElementById("fillColorPicker")
 const fillPreview = document.getElementById("fillPreview")
 const fillValue = document.getElementById("fillValue")
 
-fillPicker.addEventListener("input", e => {
+fillPicker?.addEventListener("input", e => {
   editorState.fillColor = e.target.value
   fillPreview.style.background = editorState.fillColor
   fillValue.value = editorState.fillColor
@@ -124,7 +123,7 @@ fillPicker.addEventListener("input", e => {
 })
 
 /* ===================== DELETE ===================== */
-document.getElementById("deleteBtn").addEventListener("click", deleteSelected)
+document.getElementById("deleteBtn")?.addEventListener("click", deleteSelected)
 
 function deleteSelected() {
   const el = editorState.selectedElem
@@ -158,10 +157,7 @@ function syncProperties() {
   propH.value = parseFloat(el.style.height) || el.offsetHeight
   propX.value = parseFloat(el.style.left) || 0
   propY.value = parseFloat(el.style.top) || 0
-
-  const op = parseFloat(el.style.opacity || "1")
-  propOpacity.value = Math.round(op * 100)
-
+  propOpacity.value = Math.round((parseFloat(el.style.opacity) || 1) * 100)
   propRadius.value = parseFloat(el.style.borderRadius) || 0
 
   if (el.dataset.type === "text") {
@@ -177,44 +173,33 @@ function applyProps() {
   const el = editorState.selectedElem
   if (!el) return
 
-  const w = parseFloat(propW.value)
-  const h = parseFloat(propH.value)
-  const x = parseFloat(propX.value)
-  const y = parseFloat(propY.value)
+  if (!isNaN(propW.value)) el.style.width = `${Math.max(10, propW.value)}px`
+  if (!isNaN(propH.value)) el.style.height = `${Math.max(10, propH.value)}px`
+  if (!isNaN(propX.value)) el.style.left = `${propX.value}px`
+  if (!isNaN(propY.value)) el.style.top = `${propY.value}px`
 
-  if (!isNaN(w)) el.style.width = `${Math.max(10, w)}px`
-  if (!isNaN(h)) el.style.height = `${Math.max(10, h)}px`
-  if (!isNaN(x)) el.style.left = `${x}px`
-  if (!isNaN(y)) el.style.top = `${y}px`
-
-  const op = Math.max(0, Math.min(100, parseFloat(propOpacity.value) || 100))
-  el.style.opacity = `${op / 100}`
-
-  const rad = Math.max(0, parseFloat(propRadius.value) || 0)
-  el.style.borderRadius = `${rad}px`
+  el.style.opacity = `${Math.max(0, Math.min(100, propOpacity.value)) / 100}`
+  el.style.borderRadius = `${Math.max(0, propRadius.value)}px`
 
   if (el.dataset.type === "text") {
     el.innerText = propText.value
-    const fs = Math.max(8, parseFloat(propFontSize.value) || 16)
-    el.style.fontSize = `${fs}px`
+    el.style.fontSize = `${Math.max(8, propFontSize.value)}px`
   }
 
   updateOverlay(el, canvas)
   autoSave()
 }
 
-;[propW, propH, propX, propY, propOpacity, propRadius, propText, propFontSize].forEach(inp => {
-  inp.addEventListener("input", applyProps)
-})
+;[propW, propH, propX, propY, propOpacity, propRadius, propText, propFontSize]
+  .forEach(inp => inp?.addEventListener("input", applyProps))
 
 /* ===================== LAYERS ===================== */
 const layersList = document.getElementById("layersList")
 
 const layerIcons = {
-  rect: "ri-checkbox-blank-line",
+  rectangle: "ri-checkbox-blank-line",
   circle: "ri-circle-line",
-  ellipse: "ri-ellipse-line",
-  line: "ri-subtract-line",
+  triangle: "ri-play-line",
   pencil: "ri-pencil-line",
   path: "ri-pencil-line",
   text: "ri-text",
@@ -222,10 +207,12 @@ const layerIcons = {
 }
 
 function syncLayers() {
+  if (!layersList) return
+
   const elems = [...stage.querySelectorAll(".vf-elem")]
   layersList.innerHTML = ""
 
-  elems.forEach((el, idx) => {
+  elems.forEach(el => {
     const li = document.createElement("li")
     li.className = "layer-item"
     if (el === editorState.selectedElem) li.classList.add("active")
@@ -248,13 +235,13 @@ function syncLayers() {
   })
 }
 
-
+/* ===================== CANVAS CLICK SYNC ===================== */
 canvas.addEventListener("mousedown", () => {
-  setTimeout(() => {
+  requestAnimationFrame(() => {
     syncLayers()
     syncProperties()
     autoSave()
-  }, 0)
+  })
 })
 
 /* ===================== LOAD FROM STORAGE ===================== */
@@ -277,23 +264,28 @@ function buildFromData(item) {
 
   if (item.type === "rectangle") {
     el.classList.add("vf-rect")
-    el.style.backgroundColor = item.fill || "#D9D9D9"
+    el.style.backgroundColor = item.fill || "#d9d9d9"
   }
+
   if (item.type === "circle") {
     el.classList.add("vf-circle")
-    el.style.backgroundColor = item.fill || "#D9D9D9"
+    el.style.backgroundColor = item.fill || "#d9d9d9"
+    el.style.borderRadius = "50%"
   }
+
   if (item.type === "triangle") {
     el.classList.add("vf-triangle")
-    el.style.backgroundColor = item.fill || "#D9D9D9"
+    el.style.backgroundColor = item.fill || "#d9d9d9"
   }
+
   if (item.type === "text") {
     el.classList.add("vf-text")
-    el.style.color = item.fill || "#D9D9D9"
+    el.style.color = item.fill || "#d9d9d9"
     el.style.fontSize = `${item.fontSize || 16}px`
     el.contentEditable = "true"
     el.innerText = item.text || "Text"
   }
+
   if (item.type === "image") {
     el.classList.add("vf-image-wrap")
     const img = document.createElement("img")
@@ -319,28 +311,10 @@ if (loaded) {
     stage.appendChild(buildFromData(item))
   })
 
-  if (loaded.pencil?.length) {
-    const svgLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg")
-    svgLayer.setAttribute("id", "pencilLayer")
-    svgLayer.style.position = "absolute"
-    svgLayer.style.inset = "0"
-    svgLayer.style.pointerEvents = "none"
-
-    loaded.pencil.forEach(p => {
-      const path = document.createElementNS("http://www.w3.org/2000/svg", "path")
-      path.setAttribute("d", p.d)
-      path.setAttribute("fill", "none")
-      path.setAttribute("stroke", p.stroke || "#fff")
-      path.setAttribute("stroke-width", p.strokeWidth || "2")
-      svgLayer.appendChild(path)
-    })
-
-    stage.appendChild(svgLayer)
-  }
-
   saveState()
 }
 
+/* ===================== FINAL SYNC ===================== */
 syncLayers()
 syncProperties()
 autoSave()

@@ -31,10 +31,11 @@ const circleTool = {
     const dy = y - editorState.startY
     const r = Math.sqrt(dx * dx + dy * dy)
 
-    circle.style.width = `${r * 2}px`
-    circle.style.height = `${r * 2}px`
-    circle.style.left = `${editorState.startX - r}px`
-    circle.style.top = `${editorState.startY - r}px`
+   circle.style.width = `${r * 2}px`
+circle.style.height = `${r * 2}px`
+circle.style.left = `${editorState.startX - r}px`
+circle.style.top = `${editorState.startY - r}px`
+circle.style.borderRadius = "50%"
   },
 
   onMouseUp() {

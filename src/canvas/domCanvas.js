@@ -25,7 +25,7 @@ const tools = {
   triangle: triangleTool,
   text: textTool,
   pencil: pencilTool,
-  image: imageTool
+  image: imageTool,
 }
 
 export function initCanvas() {
@@ -37,7 +37,7 @@ export function initCanvas() {
     position: "absolute",
     inset: "0",
     transformOrigin: "0 0",
-    pointerEvents: "none"
+    pointerEvents: "auto", // ✅ CRITICAL FIX
   })
 
   applyViewport(stage)
@@ -48,10 +48,12 @@ function getWorldPoint(e) {
   const cx = e.clientX - r.left
   const cy = e.clientY - r.top
 
-  const x = (cx - editorState.panX) / editorState.zoom
-  const y = (cy - editorState.panY) / editorState.zoom
-
-  return { x, y, cx, cy }
+  return {
+    cx,
+    cy,
+    x: (cx - editorState.panX) / editorState.zoom,
+    y: (cy - editorState.panY) / editorState.zoom,
+  }
 }
 
 function getBox(el) {
@@ -59,11 +61,11 @@ function getBox(el) {
     x: parseFloat(el.style.left) || 0,
     y: parseFloat(el.style.top) || 0,
     w: parseFloat(el.style.width) || el.offsetWidth,
-    h: parseFloat(el.style.height) || el.offsetHeight
+    h: parseFloat(el.style.height) || el.offsetHeight,
   }
 }
 
-/* Space for pan */
+/* Space = pan */
 window.addEventListener("keydown", e => {
   if (e.code === "Space") editorState.spaceDown = true
 })
@@ -77,7 +79,6 @@ canvas.addEventListener("mousedown", e => {
   editorState.startX = p.x
   editorState.startY = p.y
 
-  // PAN
   if (editorState.spaceDown) {
     editorState.isPanning = true
     editorState.panStart = { cx: p.cx, cy: p.cy, panX: editorState.panX, panY: editorState.panY }
@@ -86,7 +87,6 @@ canvas.addEventListener("mousedown", e => {
 
   const ov = getOverlay()
 
-  // RESIZE
   if (e.target.classList.contains("vf-handle") && ov?.__target) {
     editorState.isResizing = true
     editorState.resizeHandle = e.target.dataset.pos
@@ -95,7 +95,6 @@ canvas.addEventListener("mousedown", e => {
     return
   }
 
-  // ROTATE
   if (e.target.classList.contains("vf-rotate") && ov?.__target) {
     editorState.isRotating = true
     const b = getBox(ov.__target)
@@ -105,7 +104,6 @@ canvas.addEventListener("mousedown", e => {
     return
   }
 
-  // SELECT TOOL
   if (editorState.currentTool === "select") {
     const clicked = e.target.closest(".vf-elem")
 
@@ -131,42 +129,32 @@ canvas.addEventListener("mousedown", e => {
     return
   }
 
-  // DRAW TOOL
   clearSelection(stage)
-  const tool = tools[editorState.currentTool]
-  tool?.onMouseDown?.(e, stage, p.x, p.y)
+  tools[editorState.currentTool]?.onMouseDown?.(e, stage, p.x, p.y)
 })
 
 /* Mouse Move */
 canvas.addEventListener("mousemove", e => {
   const p = getWorldPoint(e)
 
-  // PAN MOVE
   if (editorState.isPanning) {
-    const dx = p.cx - editorState.panStart.cx
-    const dy = p.cy - editorState.panStart.cy
-    editorState.panX = editorState.panStart.panX + dx
-    editorState.panY = editorState.panStart.panY + dy
+    editorState.panX = editorState.panStart.panX + (p.cx - editorState.panStart.cx)
+    editorState.panY = editorState.panStart.panY + (p.cy - editorState.panStart.cy)
     applyViewport(stage)
     return
   }
 
-  // MARQUEE
   if (editorState.isMarquee) {
     updateMarquee(p.cx, p.cy)
     return
   }
 
-  // RESIZE
   if (editorState.isResizing && editorState.selectedElem) {
     const el = editorState.selectedElem
 
-    // TEXT RESIZE => font-size
     if (el.dataset.type === "text") {
       const dy = p.y - editorState.startY
-      const old = parseFloat(el.style.fontSize) || 16
-      const next = Math.max(8, old + dy * 0.2)
-      el.style.fontSize = `${next}px`
+      el.style.fontSize = `${Math.max(8, (parseFloat(el.style.fontSize) || 16) + dy * 0.2)}px`
       editorState.startY = p.y
       updateOverlay(el, canvas)
       return
@@ -183,26 +171,20 @@ canvas.addEventListener("mousemove", e => {
     if (editorState.resizeHandle === "bl") { w -= dx; h += dy; x += dx }
     if (editorState.resizeHandle === "tl") { w -= dx; h -= dy; x += dx; y += dy }
 
-    w = Math.max(10, w)
-    h = Math.max(10, h)
-
     el.style.left = `${x}px`
     el.style.top = `${y}px`
-    el.style.width = `${w}px`
-    el.style.height = `${h}px`
+    el.style.width = `${Math.max(10, w)}px`
+    el.style.height = `${Math.max(10, h)}px`
 
     updateOverlay(el, canvas)
     return
   }
 
-  // ROTATE
   if (editorState.isRotating && editorState.selectedElem) {
     const el = editorState.selectedElem
-
     const angle = Math.atan2(p.y - editorState.rotateCenter.y, p.x - editorState.rotateCenter.x)
     const deg = ((angle - editorState.rotateStartAngle) * 180) / Math.PI
-    const prev = editorState.rotation.get(el) || 0
-    const final = prev + deg
+    const final = (editorState.rotation.get(el) || 0) + deg
 
     editorState.rotation.set(el, final)
     el.style.transform = `rotate(${final}deg)`
@@ -210,7 +192,6 @@ canvas.addEventListener("mousemove", e => {
     return
   }
 
-  // DRAG GROUP
   if (editorState.isDragging && editorState.selectedElems.size) {
     const base = editorState.selectedElem
     const baseStart = editorState.groupDragStart.get(base)
@@ -218,7 +199,6 @@ canvas.addEventListener("mousemove", e => {
 
     const nx = p.x - editorState.dragOffsetX
     const ny = p.y - editorState.dragOffsetY
-
     const dx = nx - baseStart.x
     const dy = ny - baseStart.y
 
@@ -229,19 +209,16 @@ canvas.addEventListener("mousemove", e => {
       el.style.top = `${s.y + dy}px`
     })
 
-    updateOverlay(editorState.selectedElem, canvas)
+    updateOverlay(base, canvas)
     return
   }
 
-  // DRAW MOVE
-  const tool = tools[editorState.currentTool]
-  tool?.onMouseMove?.(e, stage, p.x, p.y)
+  tools[editorState.currentTool]?.onMouseMove?.(e, stage, p.x, p.y)
 })
 
 /* Mouse Up */
 canvas.addEventListener("mouseup", () => {
-  const changed = editorState.isDragging || editorState.isResizing || editorState.isRotating
-  if (changed) saveState()
+  if (editorState.isDragging || editorState.isResizing || editorState.isRotating) saveState()
 
   editorState.isDrawing = false
   editorState.isDragging = false
@@ -249,7 +226,6 @@ canvas.addEventListener("mouseup", () => {
   editorState.isRotating = false
   editorState.isPanning = false
 
-  // Marquee select
   if (editorState.isMarquee) {
     const rect = getMarqueeRect()
     endMarquee()
@@ -263,23 +239,20 @@ canvas.addEventListener("mouseup", () => {
 
       const selected = [...stage.querySelectorAll(".vf-elem")].filter(el => {
         const b = getBox(el)
-        return (
-          b.x >= Math.min(x1, x2) &&
-          b.y >= Math.min(y1, y2) &&
-          b.x + b.w <= Math.max(x1, x2) &&
-          b.y + b.h <= Math.max(y1, y2)
-        )
+        return b.x >= Math.min(x1, x2) &&
+               b.y >= Math.min(y1, y2) &&
+               b.x + b.w <= Math.max(x1, x2) &&
+               b.y + b.h <= Math.max(y1, y2)
       })
 
       if (selected.length) selectMultiple(selected, stage, canvas)
     }
   }
 
-  const tool = tools[editorState.currentTool]
-  tool?.onMouseUp?.()
+  tools[editorState.currentTool]?.onMouseUp?.()
 })
 
-/* Zoom CTRL + wheel */
+/* Zoom */
 canvas.addEventListener("wheel", e => {
   if (!e.ctrlKey) return
   e.preventDefault()
@@ -288,14 +261,14 @@ canvas.addEventListener("wheel", e => {
   const cx = e.clientX - r.left
   const cy = e.clientY - r.top
 
-  const worldX = (cx - editorState.panX) / editorState.zoom
-  const worldY = (cy - editorState.panY) / editorState.zoom
+  const wx = (cx - editorState.panX) / editorState.zoom
+  const wy = (cy - editorState.panY) / editorState.zoom
 
   const delta = e.deltaY < 0 ? 1.1 : 0.9
   editorState.zoom = Math.min(3, Math.max(0.3, editorState.zoom * delta))
 
-  editorState.panX = cx - worldX * editorState.zoom
-  editorState.panY = cy - worldY * editorState.zoom
+  editorState.panX = cx - wx * editorState.zoom
+  editorState.panY = cy - wy * editorState.zoom
 
   applyViewport(stage)
 }, { passive: false })
