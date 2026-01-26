@@ -37,5 +37,8 @@ export const editorState = {
   panY: 0,
   panStart: null,
 
-  pendingImageURL: null
+  pendingImageURL: null,
+  
+  // Erase mode for pencil tool
+  isEraseMode: false
 }

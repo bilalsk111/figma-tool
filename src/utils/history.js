@@ -6,37 +6,36 @@ let undoStack = []
 let redoStack = []
 
 export function saveState() {
-  const zoom = editorState.zoom || 1
-
   const snapshot = [...editorState.stage.querySelectorAll(".vf-elem")].map(el => {
-    const type = el.dataset.type
+    const rect = el.getBoundingClientRect()
+    const stageRect = editorState.stage.getBoundingClientRect()
 
     return {
-      type,
+      type: el.dataset.type,
 
-      // world coordinates (zoom-safe)
-      x: (parseFloat(el.style.left) || 0) / zoom,
-      y: (parseFloat(el.style.top) || 0) / zoom,
-      w: (parseFloat(el.style.width) || el.offsetWidth) / zoom,
-      h: (parseFloat(el.style.height) || el.offsetHeight) / zoom,
+      // world-space (zoom safe)
+      x: rect.left - stageRect.left,
+      y: rect.top - stageRect.top,
+      w: rect.width,
+      h: rect.height,
 
       rotate: editorState.rotation?.get(el) || 0,
       opacity: parseFloat(el.style.opacity || "1"),
       radius: parseFloat(el.style.borderRadius || "0"),
 
       fill:
-        type === "text"
+        el.dataset.type === "text"
           ? el.style.color
           : el.style.backgroundColor,
 
-      text: type === "text" ? el.innerText : undefined,
+      text: el.dataset.type === "text" ? el.innerText : undefined,
       fontSize:
-        type === "text"
+        el.dataset.type === "text"
           ? parseFloat(el.style.fontSize || 16)
           : undefined,
 
       src:
-        type === "image"
+        el.dataset.type === "image"
           ? el.querySelector("img")?.src
           : undefined,
     }
@@ -62,7 +61,6 @@ export function redo() {
 
 function restore(data = []) {
   const stage = editorState.stage
-
   stage.innerHTML = ""
   editorState.rotation.clear()
 

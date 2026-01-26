@@ -4,6 +4,7 @@ import { updateOverlay, getOverlay } from "../utils/overlay"
 import { startMarquee, updateMarquee, endMarquee, getMarqueeRect } from "../utils/marquee"
 import { saveState } from "../utils/history"
 import { applyViewport } from "../utils/viewport"
+import { saveToStorage } from "../utils/storage"
 
 import rectangleTool from "../tools/rectangleTool"
 import circleTool from "../tools/circleTool"
@@ -11,6 +12,7 @@ import triangleTool from "../tools/triangleTool"
 import textTool from "../tools/textTool"
 import pencilTool from "../tools/pencilTool"
 import imageTool from "../tools/imageTool"
+import eraseTool from "../tools/eraseTool"
 
 export const canvas = document.getElementById("canvas")
 
@@ -26,6 +28,7 @@ const tools = {
   text: textTool,
   pencil: pencilTool,
   image: imageTool,
+  erase: eraseTool,
 }
 
 export function initCanvas() {
@@ -37,7 +40,7 @@ export function initCanvas() {
     position: "absolute",
     inset: "0",
     transformOrigin: "0 0",
-    pointerEvents: "auto", // ✅ CRITICAL FIX
+    pointerEvents: "auto",
   })
 
   applyViewport(stage)
@@ -58,12 +61,13 @@ function getWorldPoint(e) {
 
 function getBox(el) {
   return {
-    x: parseFloat(el.style.left) || 0,
-    y: parseFloat(el.style.top) || 0,
-    w: parseFloat(el.style.width) || el.offsetWidth,
-    h: parseFloat(el.style.height) || el.offsetHeight,
+    x: parseFloat(el.style.left),
+    y: parseFloat(el.style.top),
+    w: parseFloat(el.style.width),
+    h: parseFloat(el.style.height),
   }
 }
+
 
 /* Space = pan */
 window.addEventListener("keydown", e => {
@@ -218,7 +222,13 @@ canvas.addEventListener("mousemove", e => {
 
 /* Mouse Up */
 canvas.addEventListener("mouseup", () => {
-  if (editorState.isDragging || editorState.isResizing || editorState.isRotating) saveState()
+  const hadInteraction = editorState.isDragging || editorState.isResizing || editorState.isRotating || editorState.isDrawing
+  
+  if (hadInteraction) {
+    saveState()
+    // Save to localStorage for persistence
+    saveToStorage(stage, editorState)
+  }
 
   editorState.isDrawing = false
   editorState.isDragging = false
@@ -249,7 +259,13 @@ canvas.addEventListener("mouseup", () => {
     }
   }
 
+  // Call tool's onMouseUp and save after
   tools[editorState.currentTool]?.onMouseUp?.()
+  
+  // Ensure persistence after any tool operation
+  if (hadInteraction || editorState.isDrawing) {
+    saveToStorage(stage, editorState)
+  }
 })
 
 /* Zoom */

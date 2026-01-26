@@ -2,8 +2,15 @@ import { editorState } from "../state/editorState"
 import { saveState } from "../utils/history"
 
 let svgLayer = null
-let path = null
+let currentPath = null
+let pathPoints = []
+let previousPoint = null
 
+/**
+ * Ensures the SVG layer for pencil drawings exists
+ * @param {HTMLElement} stage - The stage element
+ * @returns {SVGElement} The SVG layer
+ */
 function ensurePencilLayer(stage) {
   if (svgLayer && stage.contains(svgLayer)) return svgLayer
 
@@ -22,45 +29,116 @@ function ensurePencilLayer(stage) {
   return svgLayer
 }
 
-function toWorld(x, y) {
-  const z = editorState.zoom || 1
+/**
+ * Converts screen coordinates to world coordinates
+ * @param {number} x - Screen X coordinate
+ * @param {number} y - Screen Y coordinate
+ * @returns {{x: number, y: number}} World coordinates
+ */
+function toWorldCoordinates(x, y) {
+  const zoom = editorState.zoom || 1
   return {
-    x: x / z,
-    y: y / z,
+    x: x / zoom,
+    y: y / zoom,
   }
 }
 
+/**
+ * Creates a smooth path using quadratic bezier curves
+ * @param {Array} points - Array of {x, y} points
+ * @returns {string} SVG path data
+ */
+function createSmoothPath(points) {
+  if (points.length === 0) return ""
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`
+
+  let pathData = `M ${points[0].x} ${points[0].y}`
+
+  for (let i = 1; i < points.length; i++) {
+    const current = points[i]
+    const previous = points[i - 1]
+    
+    if (i === 1) {
+      // First segment: use line
+      pathData += ` L ${current.x} ${current.y}`
+    } else {
+      // Use quadratic bezier for smooth curves
+      const midX = (previous.x + current.x) / 2
+      const midY = (previous.y + current.y) / 2
+      pathData += ` Q ${previous.x} ${previous.y} ${midX} ${midY}`
+    }
+  }
+
+  // Add final point
+  const last = points[points.length - 1]
+  const secondLast = points[points.length - 2]
+  if (secondLast) {
+    pathData += ` Q ${secondLast.x} ${secondLast.y} ${last.x} ${last.y}`
+  }
+
+  return pathData
+}
+
 const pencilTool = {
-  onMouseDown(e, stage, x, y) {
+  onMouseDown(e, stage, worldX, worldY) {
     editorState.isDrawing = true
 
     const layer = ensurePencilLayer(stage)
-    const p = toWorld(x, y)
+    const point = { x: worldX, y: worldY }
 
-    path = document.createElementNS("http://www.w3.org/2000/svg", "path")
-    path.setAttribute("d", `M ${p.x} ${p.y}`)
-    path.setAttribute("fill", "none")
-    path.setAttribute("stroke", editorState.fillColor)
-    path.setAttribute("stroke-width", 2 / (editorState.zoom || 1))
-    path.setAttribute("stroke-linecap", "round")
-    path.setAttribute("stroke-linejoin", "round")
+    pathPoints = [point]
+    previousPoint = point
 
-    layer.appendChild(path)
+    currentPath = document.createElementNS("http://www.w3.org/2000/svg", "path")
+    currentPath.setAttribute("d", `M ${point.x} ${point.y}`)
+    currentPath.setAttribute("fill", "none")
+    currentPath.setAttribute("stroke", editorState.fillColor)
+    currentPath.setAttribute("stroke-width", "2")
+    currentPath.setAttribute("stroke-linecap", "round")
+    currentPath.setAttribute("stroke-linejoin", "round")
+    currentPath.dataset.type = "pencil"
+    currentPath.dataset.stroke = editorState.fillColor
+
+    layer.appendChild(currentPath)
   },
 
-  onMouseMove(e, stage, x, y) {
-    if (!editorState.isDrawing || !path) return
+  onMouseMove(e, stage, worldX, worldY) {
+    if (!editorState.isDrawing || !currentPath) return
 
-    const p = toWorld(x, y)
-    const d = path.getAttribute("d")
-    path.setAttribute("d", `${d} L ${p.x} ${p.y}`)
+    const point = { x: worldX, y: worldY }
+    
+    // Only add point if it's far enough from the previous point (reduces noise)
+    if (previousPoint) {
+      const dx = point.x - previousPoint.x
+      const dy = point.y - previousPoint.y
+      const distance = Math.sqrt(dx * dx + dy * dy)
+      
+      if (distance < 0.5) return // Skip points too close together
+    }
+
+    pathPoints.push(point)
+    previousPoint = point
+
+    // Update path with smooth curve
+    if (pathPoints.length >= 2) {
+      const pathData = createSmoothPath(pathPoints)
+      currentPath.setAttribute("d", pathData)
+    }
   },
 
   onMouseUp() {
-    if (!path) return
+    if (!currentPath) return
+
+    // Finalize the path
+    if (pathPoints.length > 1) {
+      const pathData = createSmoothPath(pathPoints)
+      currentPath.setAttribute("d", pathData)
+    }
 
     editorState.isDrawing = false
-    path = null
+    currentPath = null
+    pathPoints = []
+    previousPoint = null
     saveState()
   },
 }

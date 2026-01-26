@@ -1,56 +1,80 @@
-let overlay = null
+let overlayElement = null
 
+/**
+ * Hides and removes the selection overlay
+ */
 export function hideOverlay() {
-  overlay?.remove()
-  overlay = null
+  if (overlayElement) {
+    overlayElement.remove()
+    overlayElement = null
+  }
 }
 
+/**
+ * Gets the current overlay element
+ * @returns {HTMLElement|null} The overlay element or null
+ */
 export function getOverlay() {
-  return overlay
+  return overlayElement
 }
 
+/**
+ * Shows selection overlay with handles for the target element
+ * @param {HTMLElement} target - The element to show overlay for
+ * @param {HTMLElement} canvas - The canvas element
+ */
 export function showOverlay(target, canvas) {
   hideOverlay()
-  if (!target) return
+  if (!target || !canvas) return
 
-  const r = target.getBoundingClientRect()
-  const c = canvas.getBoundingClientRect()
+  const targetRect = target.getBoundingClientRect()
+  const canvasRect = canvas.getBoundingClientRect()
 
-  overlay = document.createElement("div")
-  overlay.id = "vf-overlay"
-  overlay.__target = target
+  overlayElement = document.createElement("div")
+  overlayElement.id = "vf-overlay"
+  overlayElement.__target = target
 
-  overlay.style.left = `${r.left - c.left}px`
-  overlay.style.top = `${r.top - c.top}px`
-  overlay.style.width = `${r.width}px`
-  overlay.style.height = `${r.height}px`
+  // Position overlay relative to canvas
+  overlayElement.style.left = `${targetRect.left - canvasRect.left}px`
+  overlayElement.style.top = `${targetRect.top - canvasRect.top}px`
+  overlayElement.style.width = `${targetRect.width}px`
+  overlayElement.style.height = `${targetRect.height}px`
 
-  const handles = [
-    ["tl", 0, 0],
-    ["tr", r.width, 0],
-    ["bl", 0, r.height],
-    ["br", r.width, r.height]
+  // Create resize handles at corners
+  const handlePositions = [
+    ["tl", 0, 0, "nw-resize"],
+    ["tr", targetRect.width, 0, "ne-resize"],
+    ["bl", 0, targetRect.height, "sw-resize"],
+    ["br", targetRect.width, targetRect.height, "se-resize"]
   ]
 
-  handles.forEach(([pos, x, y]) => {
-    const h = document.createElement("div")
-    h.className = "vf-handle"
-    h.dataset.pos = pos
-    h.style.left = `${x - 5}px`
-    h.style.top = `${y - 5}px`
-    overlay.appendChild(h)
+  handlePositions.forEach(([position, x, y, cursor]) => {
+    const handle = document.createElement("div")
+    handle.className = "vf-handle"
+    handle.dataset.pos = position
+    handle.style.left = `${x - 5}px`
+    handle.style.top = `${y - 5}px`
+    handle.style.cursor = cursor
+    overlayElement.appendChild(handle)
   })
 
-  const rot = document.createElement("div")
-  rot.className = "vf-rotate"
-  rot.dataset.rotate = "true"
-  rot.style.left = `${r.width / 2 - 6}px`
-  rot.style.top = `-24px`
-  overlay.appendChild(rot)
+  // Create rotation handle above the element
+  const rotationHandle = document.createElement("div")
+  rotationHandle.className = "vf-rotate"
+  rotationHandle.dataset.rotate = "true"
+  rotationHandle.style.left = `${targetRect.width / 2 - 6}px`
+  rotationHandle.style.top = `-24px`
+  rotationHandle.style.cursor = "grab"
+  overlayElement.appendChild(rotationHandle)
 
-  canvas.appendChild(overlay)
+  canvas.appendChild(overlayElement)
 }
 
+/**
+ * Updates the overlay position and size for the target element
+ * @param {HTMLElement} target - The element to update overlay for
+ * @param {HTMLElement} canvas - The canvas element
+ */
 export function updateOverlay(target, canvas) {
   showOverlay(target, canvas)
 }

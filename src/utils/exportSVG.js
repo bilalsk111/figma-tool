@@ -80,12 +80,19 @@ export function exportStageAsSVG(canvas, stage, bgColor) {
     }
   })
 
-  // Pencil paths
+  // Export pencil paths
   const pencilLayer = stage.querySelector("#pencilLayer")
   if (pencilLayer) {
-    pencilLayer.querySelectorAll("path").forEach(p => {
+    const pencilPaths = pencilLayer.querySelectorAll("path[data-type='pencil']")
+    pencilPaths.forEach(path => {
+      const pathData = path.getAttribute("d") || ""
+      const stroke = path.getAttribute("stroke") || "#D9D9D9"
+      const strokeWidth = path.getAttribute("stroke-width") || "2"
+      const strokeLinecap = path.getAttribute("stroke-linecap") || "round"
+      const strokeLinejoin = path.getAttribute("stroke-linejoin") || "round"
+      
       parts.push(
-        `<path d="${p.getAttribute("d")}" fill="none" stroke="${p.getAttribute("stroke")}" stroke-width="${p.getAttribute("stroke-width")}" />`
+        `<path d="${pathData}" fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" stroke-linecap="${strokeLinecap}" stroke-linejoin="${strokeLinejoin}" />`
       )
     })
   }

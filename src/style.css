@@ -55,16 +55,19 @@
   user-select: none;
   transform-origin: center center;
   pointer-events: auto;
+  box-sizing: border-box;
 }
 
 .vf-selected {
   outline: 2px solid #3b82f6;
   outline-offset: 2px;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
 }
 
 .vf-multi-selected {
   outline: 2px dashed #22c55e;
   outline-offset: 2px;
+  box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.3);
 }
 
 .vf-rect {
@@ -113,19 +116,44 @@
   position: absolute;
   width: 10px;
   height: 10px;
-  background: #4f46e5;
+  background: #3b82f6;
+  border: 2px solid #ffffff;
   border-radius: 2px;
   pointer-events: all;
+  transition: transform 0.1s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.vf-handle:hover {
+  transform: scale(1.2);
+  background: #2563eb;
+}
+
+.vf-handle:active {
+  transform: scale(0.95);
 }
 
 .vf-rotate {
   position: absolute;
   width: 12px;
   height: 12px;
-  background: #4f46e5;
+  background: #3b82f6;
+  border: 2px solid #ffffff;
   border-radius: 50%;
   pointer-events: all;
   cursor: grab;
+  transition: transform 0.1s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.vf-rotate:hover {
+  transform: scale(1.2);
+  background: #2563eb;
+}
+
+.vf-rotate:active {
+  cursor: grabbing;
+  transform: scale(0.95);
 }
 
 #vf-marquee {
@@ -146,9 +174,23 @@
 .layer-item {
   font-size: 1.2vw;
   border-bottom: 1px solid #4444;
-  padding: 5px;
+  padding: 8px 12px;
   cursor: pointer;
+  transition: background-color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
-.layer-item:active{
-  background: #222;
+
+.layer-item:hover {
+  background: #27272a;
+}
+
+.layer-item.active {
+  background: #3b82f6;
+  color: #ffffff;
+}
+
+.layer-item.active .layer-icon {
+  color: #ffffff;
 }
